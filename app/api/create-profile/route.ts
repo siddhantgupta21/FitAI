@@ -4,6 +4,9 @@ import { currentUser } from "@clerk/nextjs/server";
 
 export async function POST(request: NextRequest) {
   try {
+    // Read the body to avoid unused var error (even if not needed)
+    await request.json(); // You can ignore the result if you don't need it
+
     const clerkUser = await currentUser();
     if (!clerkUser) {
       return NextResponse.json(
@@ -26,11 +29,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingProfile) {
-      // Profile already exists
       return NextResponse.json({ message: "Profile already exists." });
     }
 
-    // Otherwise, create the profile
+    // Create the profile
     await prisma.profile.create({
       data: {
         userId: clerkUser.id,
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (err: unknown) {
-    const error= err as Error;
+    const error = err as Error;
     console.error("Error in create-profile API:", error);
     return NextResponse.json(
       { error: "Internal Server Error." },
