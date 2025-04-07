@@ -62,7 +62,17 @@ export async function POST(request: Request) {
       max_tokens: 1500,
     });
 
-    let aiContent = response.choices[0].message.content.trim();
+    const aiMessage = response.choices[0]?.message?.content;
+
+    if (!aiMessage) {
+    return NextResponse.json(
+        { error: "AI response was empty. Please try again." },
+        { status: 500 }
+    );
+    }
+
+    let aiContent = aiMessage.trim();
+
     console.log("Raw AI content:", aiContent);
 
     // Strip triple backticks or markdown formatting if present
