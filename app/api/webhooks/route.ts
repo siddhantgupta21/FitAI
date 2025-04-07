@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; // <-- import Prisma client
+import { prisma } from "@/lib/prisma";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+  apiVersion: "2023-10-16",
+});
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET as string;
 
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest): Promise<NextResponse> {
   const body = await req.text();
   const signature = req.headers.get("stripe-signature");
 
@@ -18,9 +20,10 @@ export async function POST(req: NextRequest) {
       signature || "",
       webhookSecret
     );
-  } catch (err: any) {
-    console.error(`Webhook signature verification failed. ${err.message}`);
-    return NextResponse.json({ error: err.message }, { status: 400 });
+  } catch (err: unknown) {
+    const error = err as Error;
+    console.error(`Webhook signature verification failed. ${error.message}`);
+    return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
   try {
@@ -40,40 +43,33 @@ export async function POST(req: NextRequest) {
         await handleSubscriptionDeleted(subscription);
         break;
       }
-      // Add more event types as needed
       default:
         console.log(`Unhandled event type ${event.type}`);
     }
-  } catch (e: any) {
-    console.error(`stripe error: ${e.message} | EVENT TYPE: ${event.type}`);
-    return NextResponse.json({ error: e.message }, { status: 400 });
+  } catch (err: unknown) {
+    const error = err as Error;
+    console.error(`Stripe error: ${error.message} | EVENT TYPE: ${event.type}`);
+    return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
   return NextResponse.json({});
 }
 
-// Handler for successful checkout sessions
 const handleCheckoutSessionCompleted = async (
   session: Stripe.Checkout.Session
-) => {
+): Promise<void> => {
   const userId = session.metadata?.clerkUserId;
-  console.log("Handling checkout.session.completed for user:", userId);
-
   if (!userId) {
     console.error("No userId found in session metadata.");
     return;
   }
 
-  // Retrieve subscription ID from the session
   const subscriptionId = session.subscription as string;
-
   if (!subscriptionId) {
     console.error("No subscription ID found in session.");
     return;
   }
 
-  console.log("HHHHEHHEHE");
-  // Update Prisma with subscription details
   try {
     await prisma.profile.update({
       where: { userId },
@@ -84,26 +80,21 @@ const handleCheckoutSessionCompleted = async (
       },
     });
     console.log(`Subscription activated for user: ${userId}`);
-  } catch (error: any) {
+  } catch (err: unknown) {
+    const error = err as Error;
     console.error("Prisma Update Error:", error.message);
   }
 };
 
-// Handler for failed invoice payments
-const handleInvoicePaymentFailed = async (invoice: Stripe.Invoice) => {
+const handleInvoicePaymentFailed = async (
+  invoice: Stripe.Invoice
+): Promise<void> => {
   const subscriptionId = invoice.subscription as string;
-  console.log(
-    "Handling invoice.payment_failed for subscription:",
-    subscriptionId
-  );
-
   if (!subscriptionId) {
     console.error("No subscription ID found in invoice.");
     return;
   }
 
-  // Retrieve userId from subscription ID
-  let userId: string | undefined;
   try {
     const profile = await prisma.profile.findUnique({
       where: { stripeSubscriptionId: subscriptionId },
@@ -115,36 +106,23 @@ const handleInvoicePaymentFailed = async (invoice: Stripe.Invoice) => {
       return;
     }
 
-    userId = profile.userId;
-  } catch (error: any) {
-    console.error("Prisma Query Error:", error.message);
-    return;
-  }
-
-  // Update Prisma with payment failure
-  try {
     await prisma.profile.update({
-      where: { userId },
-      data: {
-        subscriptionActive: false,
-      },
+      where: { userId: profile.userId },
+      data: { subscriptionActive: false },
     });
-    console.log(`Subscription payment failed for user: ${userId}`);
-  } catch (error: any) {
-    console.error("Prisma Update Error:", error.message);
+
+    console.log(`Subscription payment failed for user: ${profile.userId}`);
+  } catch (err: unknown) {
+    const error = err as Error;
+    console.error("Prisma Error:", error.message);
   }
 };
 
-// Handler for subscription deletions (e.g., cancellations)
-const handleSubscriptionDeleted = async (subscription: Stripe.Subscription) => {
+const handleSubscriptionDeleted = async (
+  subscription: Stripe.Subscription
+): Promise<void> => {
   const subscriptionId = subscription.id;
-  console.log(
-    "Handling customer.subscription.deleted for subscription:",
-    subscriptionId
-  );
 
-  // Retrieve userId from subscription ID
-  let userId: string | undefined;
   try {
     const profile = await prisma.profile.findUnique({
       where: { stripeSubscriptionId: subscriptionId },
@@ -156,23 +134,17 @@ const handleSubscriptionDeleted = async (subscription: Stripe.Subscription) => {
       return;
     }
 
-    userId = profile.userId;
-  } catch (error: any) {
-    console.error("Prisma Query Error:", error.message);
-    return;
-  }
-
-  // Update Prisma with subscription cancellation
-  try {
     await prisma.profile.update({
-      where: { userId },
+      where: { userId: profile.userId },
       data: {
         subscriptionActive: false,
         stripeSubscriptionId: null,
       },
     });
-    console.log(`Subscription canceled for user: ${userId}`);
-  } catch (error: any) {
-    console.error("Prisma Update Error:", error.message);
+
+    console.log(`Subscription canceled for user: ${profile.userId}`);
+  } catch (err: unknown) {
+    const error = err as Error;
+    console.error("Prisma Error:", error.message);
   }
 };

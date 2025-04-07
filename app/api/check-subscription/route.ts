@@ -20,7 +20,8 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ subscriptionActive: true });
-  } catch (err: any) {
+  } catch (error: unknown) {
+    const err= error as Error;
     console.error("check-subscription error:", err.message);
     return NextResponse.json(
       { error: "Internal server error" },

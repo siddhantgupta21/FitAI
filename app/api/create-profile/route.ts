@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
       { message: "Profile created successfully." },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (err: unknown) {
+    const error= err as Error;
     console.error("Error in create-profile API:", error);
     return NextResponse.json(
       { error: "Internal Server Error." },
