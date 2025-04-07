@@ -89,9 +89,11 @@ const handleCheckoutSessionCompleted = async (
 const handleInvoicePaymentFailed = async (
   invoice: Stripe.Invoice
 ): Promise<void> => {
-  const subscriptionId = invoice.subscription as string;
+  // Get subscription ID from the first invoice line item
+  const subscriptionId = invoice.lines.data[0]?.subscription as string | undefined;
+
   if (!subscriptionId) {
-    console.error("No subscription ID found in invoice.");
+    console.error("No subscription ID found in invoice lines.");
     return;
   }
 
