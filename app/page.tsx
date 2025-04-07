@@ -1,8 +1,6 @@
 // app/page.tsx (HomePage)
 "use client";
 
-import { useState } from "react";
-import { SignIn, SignUp } from "@clerk/nextjs";
 import Link from "next/link";
 
 export default function HomePage() {

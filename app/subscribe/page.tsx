@@ -4,8 +4,7 @@
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { availablePlans, Plan } from "@/lib/plans"; // Adjust the path based on your project structure
-import { useState } from "react";
+import { availablePlans} from "@/lib/plans"; // Adjust the path based on your project structure
 import toast, { Toaster } from "react-hot-toast"; // Optional: For better user feedback
 
 // Define the shape of the successful response
@@ -50,7 +49,6 @@ const subscribeToPlan = async ({
 export default function SubscribePage() {
   const { user } = useUser(); // Access the current user
   const router = useRouter(); // Next.js router for navigation
-  const queryClient = useQueryClient();
 
   const userId = user?.id;
   const email = user?.emailAddresses?.[0]?.emailAddress || "";

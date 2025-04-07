@@ -63,15 +63,15 @@ export default clerkMiddleware(async (auth, req) => {
       if (checkSubRes.ok) {
         const data = await checkSubRes.json();
         if (!data.subscriptionActive) {
-          return NextResponse.redirect(new URL("/subscribe", origin));
+        //   return NextResponse.redirect(new URL("/subscribe", origin));
         }
       } else {
         // handle error
-        return NextResponse.redirect(new URL("/subscribe", origin));
+        // return NextResponse.redirect(new URL("/subscribe", origin));
       }
     } catch (error) {
       console.error("Error calling /api/check-subscription:", error);
-      return NextResponse.redirect(new URL("/subscribe", origin));
+    //   return NextResponse.redirect(new URL("/subscribe", origin));
     }
   }
 
